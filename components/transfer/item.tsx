@@ -22,7 +22,7 @@ export default class Item extends React.Component<any, any> {
     return text.indexOf(filter) >= 0;
   }
   render() {
-    const { render, filter, item, lazy, checked, prefixCls, onClick } = this.props;
+    const { render, filter, item, lazy, checked, prefixCls, onClick, onSearchFilter } = this.props;
     const renderResult = render(item);
     let renderedText;
     let renderedEl;
@@ -35,9 +35,10 @@ export default class Item extends React.Component<any, any> {
     }
 
     if (filter && filter.trim() && !this.matchFilter(renderedText)) {
+      onSearchFilter(item, false);
       return null;
     }
-
+    onSearchFilter(item, true);
     const className = classNames({
       [`${prefixCls}-content-item`]: true,
       [`${prefixCls}-content-item-disabled`]: item.disabled,

@@ -55,12 +55,17 @@ export default class TransferList extends React.Component<TransferListProps, any
 
   context: TransferListContext;
   timer: number;
+  _filteredItemCount: number;
+  _searchFilteredDataSource: TransferItem[];
 
   constructor(props) {
     super(props);
     this.state = {
       mounted: false,
+      searchFilteredDataSource: this.props.dataSource,
     };
+    this._searchFilteredDataSource = this.props.dataSource.slice();
+    this._filteredItemCount = 0;
   }
 
   componentDidMount() {
@@ -79,6 +84,14 @@ export default class TransferList extends React.Component<TransferListProps, any
     return PureRenderMixin.shouldComponentUpdate.apply(this, args);
   }
 
+  componentWillReceiveProps(nextProps) {
+    if (nextProps && nextProps.dataSource && nextProps.dataSource !== this.props.dataSource) {
+      this._searchFilteredDataSource = nextProps.dataSource.slice();
+      this.setState({
+        searchFilteredDataSource: nextProps.dataSource,
+      });
+    }
+  }
   getCheckStatus(filteredDataSource) {
     const { checkedKeys } = this.props;
     if (checkedKeys.length === 0) {
@@ -101,6 +114,23 @@ export default class TransferList extends React.Component<TransferListProps, any
 
   handleClear = () => {
     this.props.handleClear();
+  }
+  handleSearchFilter = (item, matchSearch) => {
+    const index = this._searchFilteredDataSource.findIndex(dataItem => dataItem.key === item.key);
+    if (matchSearch && index === -1) {
+        this._searchFilteredDataSource.push(item);
+    }
+    if (!matchSearch && index !== -1) {
+      this._searchFilteredDataSource.splice(index, 1);
+    }
+    if (++this._filteredItemCount === this.props.dataSource.length) {
+        this._filteredItemCount = 0;
+        setTimeout(() => {
+          this.setState({
+            searchFilteredDataSource: this._searchFilteredDataSource.slice(),
+           });
+        }, 0);
+    }
   }
 
   render() {
@@ -132,6 +162,7 @@ export default class TransferList extends React.Component<TransferListProps, any
           render={render}
           filter={filter}
           filterOption={filterOption}
+          onSearchFilter={this.handleSearchFilter}
           checked={checked}
           prefixCls={prefixCls}
           onClick={this.handleSelect}
@@ -183,24 +214,24 @@ export default class TransferList extends React.Component<TransferListProps, any
       </div>
     ) : null;
 
-    const checkStatus = this.getCheckStatus(filteredDataSource);
+    const { searchFilteredDataSource } = this.state;
+    const checkStatus = this.getCheckStatus(searchFilteredDataSource);
     const checkedAll = checkStatus === 'all';
     const checkAllCheckbox = (
       <Checkbox
         ref="checkbox"
         checked={checkedAll}
         indeterminate={checkStatus === 'part'}
-        onChange={() => this.props.handleSelectAll(filteredDataSource, checkedAll)}
+        onChange={() => this.props.handleSelectAll(searchFilteredDataSource.filter(item => !item.disabled), checkedAll)}
       />
     );
-
     return (
       <div className={listCls} style={style}>
         <div className={`${prefixCls}-header`}>
           {checkAllCheckbox}
           <span className={`${prefixCls}-header-selected`}>
             <span>
-              {(checkedKeys.length > 0 ? `${checkedKeys.length}/` : '') + dataSource.length} {unit}
+              {(checkedKeys.length > 0 ? `${checkedKeys.length}/` : '') + searchFilteredDataSource.length} {unit}
             </span>
             <span className={`${prefixCls}-header-title`}>
               {titleText}
